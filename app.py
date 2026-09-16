@@ -900,11 +900,22 @@ def eliminar_habitacion(habitacion_id):
     h = Habitacion.query.get_or_404(habitacion_id)
     # Desvincular ingresos históricos (se conservan como registro, sin habitación asociada)
     Ingreso.query.filter_by(habitacion_id=h.id).update({"habitacion_id": None})
-    # Eliminar inquilinos asociados a la habitación
-    Inquilino.query.filter_by(habitacion_id=h.id).delete()
+    # Nunca se borra físicamente a un inquilino (perdería su historial de ingresos):
+    # se desvincula de la habitación y, si estaba activo, se le registra la salida.
+    hoy = date.today()
+    inquilinos_afectados = Inquilino.query.filter_by(habitacion_id=h.id).all()
+    for i in inquilinos_afectados:
+        i.habitacion_id = None
+        if i.activo:
+            i.activo = False
+            i.fecha_salida = hoy
     db.session.delete(h)
     db.session.commit()
-    flash("Habitación eliminada.", "warning")
+    if inquilinos_afectados:
+        flash(f"Habitación eliminada. {len(inquilinos_afectados)} inquilino(s) quedaron "
+              f"sin habitación e inactivos (su historial se conserva).", "warning")
+    else:
+        flash("Habitación eliminada.", "warning")
     return redirect(url_for("habitaciones"))
 
 
