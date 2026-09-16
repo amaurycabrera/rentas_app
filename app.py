@@ -406,6 +406,22 @@ def guardar_comprobante(archivo):
     return nombre_guardado
 
 
+def eliminar_archivo_comprobante(nombre_archivo):
+    """Borra físicamente el archivo de un comprobante de instance/comprobantes/,
+    para no dejar huérfanos cuando se elimina el ingreso/egreso que lo referenciaba.
+    Nunca lanza excepción: si el archivo ya no existe, simplemente no hace nada."""
+    if not nombre_archivo:
+        return
+    ruta = os.path.normpath(os.path.join(COMPROBANTES_DIR, nombre_archivo))
+    # Defensivo: nunca borrar nada fuera de la carpeta de comprobantes
+    if not ruta.startswith(os.path.normpath(COMPROBANTES_DIR) + os.sep):
+        return
+    try:
+        os.remove(ruta)
+    except FileNotFoundError:
+        pass
+
+
 def total(query, campo):
     """Suma un campo monetario (Decimal). Usa 0 (no 0.0) como valor de reemplazo
     para no mezclar float con Decimal en operaciones posteriores."""
@@ -999,6 +1015,7 @@ def ingresos():
 @login_required
 def eliminar_ingreso(ingreso_id):
     ing = Ingreso.query.get_or_404(ingreso_id)
+    eliminar_archivo_comprobante(ing.comprobante)
     db.session.delete(ing)
     db.session.commit()
     flash("Ingreso eliminado.", "warning")
@@ -1044,6 +1061,7 @@ def egresos():
 @login_required
 def eliminar_egreso(egreso_id):
     egr = Egreso.query.get_or_404(egreso_id)
+    eliminar_archivo_comprobante(egr.comprobante)
     db.session.delete(egr)
     db.session.commit()
     flash("Egreso eliminado.", "warning")

@@ -325,6 +325,21 @@ Si encuentras un problema de seguridad adicional, abre un issue o revisa
 
 ---
 
+---
+
+## Mantenimiento
+
+Al eliminar un ingreso o egreso, su comprobante adjunto (si tenía) se borra
+automáticamente del disco. Para limpiar archivos huérfanos que hayan quedado
+de antes de esta protección:
+
+```bash
+python limpiar_comprobantes_huerfanos.py            # solo muestra qué borraría
+python limpiar_comprobantes_huerfanos.py --borrar   # borra de verdad
+```
+
+---
+
 ## Changelog
 
 Ver [CHANGELOG.md](CHANGELOG.md) para el historial de versiones y cambios.
