@@ -349,6 +349,17 @@ def obtener_inquilino(inquilino_id_raw):
     return Inquilino.query.get(iid)
 
 
+def ocupante_activo_de(habitacion_id, excluir_inquilino_id=None):
+    """Regla de negocio: una habitación solo puede tener un inquilino activo.
+    Devuelve el inquilino activo que ya ocupa esa habitación (si hay alguno),
+    excluyendo opcionalmente al propio inquilino que se está editando/asignando
+    (para poder guardar cambios de alguien que ya está en esa habitación)."""
+    consulta = Inquilino.query.filter_by(habitacion_id=habitacion_id, activo=True)
+    if excluir_inquilino_id is not None:
+        consulta = consulta.filter(Inquilino.id != excluir_inquilino_id)
+    return consulta.first()
+
+
 def tipo_valido(valor, lista_tipos):
     """Comprueba que 'valor' sea una de las claves permitidas en lista_tipos
     (TIPOS_INGRESO, TIPOS_EGRESO, etc.), en vez de confiar en que el <select>
@@ -780,6 +791,12 @@ def habitaciones():
             if habitacion_id_raw and habitacion_elegida is None:
                 flash("La habitación seleccionada no existe.", "danger")
                 return redirect(url_for("habitaciones"))
+            if habitacion_elegida:
+                ocupante = ocupante_activo_de(habitacion_elegida.id)
+                if ocupante:
+                    flash(f"La habitación '{habitacion_elegida.nombre}' ya tiene un inquilino activo "
+                          f"({ocupante.nombre}). Registra su salida antes de asignar otro.", "danger")
+                    return redirect(url_for("habitaciones"))
             i = Inquilino(
                 nombre=request.form["nombre"].strip(),
                 documento=request.form.get("documento", "").strip(),
@@ -809,10 +826,16 @@ def asignar_inquilino(inquilino_id):
     habitacion = obtener_habitacion(request.form.get("habitacion_id"))
     if habitacion is None:
         flash("Selecciona una habitación válida.", "danger")
-    else:
-        i.habitacion_id = habitacion.id
-        db.session.commit()
-        flash(f"{i.nombre} fue asignado a la habitación seleccionada.", "success")
+        return redirect(url_for("habitaciones"))
+    if i.activo:
+        ocupante = ocupante_activo_de(habitacion.id, excluir_inquilino_id=i.id)
+        if ocupante:
+            flash(f"La habitación '{habitacion.nombre}' ya tiene un inquilino activo "
+                  f"({ocupante.nombre}). Registra su salida antes de asignar otro.", "danger")
+            return redirect(url_for("habitaciones"))
+    i.habitacion_id = habitacion.id
+    db.session.commit()
+    flash(f"{i.nombre} fue asignado a la habitación seleccionada.", "success")
     return redirect(url_for("habitaciones"))
 
 
@@ -851,13 +874,20 @@ def editar_inquilino(inquilino_id):
         if habitacion_id_raw and habitacion_elegida is None:
             flash("La habitación seleccionada no existe.", "danger")
             return redirect(url_for("editar_inquilino", inquilino_id=inquilino_id))
+        nuevo_activo = request.form.get("activo") == "on"
+        if habitacion_elegida and nuevo_activo:
+            ocupante = ocupante_activo_de(habitacion_elegida.id, excluir_inquilino_id=i.id)
+            if ocupante:
+                flash(f"La habitación '{habitacion_elegida.nombre}' ya tiene un inquilino activo "
+                      f"({ocupante.nombre}). Registra su salida antes de asignar otro.", "danger")
+                return redirect(url_for("editar_inquilino", inquilino_id=inquilino_id))
         i.nombre = request.form["nombre"].strip()
         i.documento = request.form.get("documento", "").strip()
         i.telefono = request.form.get("telefono", "").strip()
         i.email = request.form.get("email", "").strip()
         i.habitacion_id = habitacion_elegida.id if habitacion_elegida else None
         i.fecha_ingreso = parse_fecha(request.form.get("fecha_ingreso"), i.fecha_ingreso)
-        i.activo = request.form.get("activo") == "on"
+        i.activo = nuevo_activo
         db.session.commit()
         flash(f"Inquilino '{i.nombre}' actualizado.", "success")
         return redirect(url_for("habitaciones"))

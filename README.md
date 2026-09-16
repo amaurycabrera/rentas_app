@@ -1,307 +1,336 @@
 # RentaAdmin
 
-Aplicación web para administrar el arriendo de habitaciones, controlar ingresos y egresos, gestionar inquilinos y consultar históricos y balances.
+**RentaAdmin** es una aplicación web para administrar el arriendo de habitaciones
+en una casa compartida: inquilinos, ingresos (arriendos, multas, depósitos),
+egresos por categoría (agua, gas, energía, internet/TV, impuestos, mantenimiento,
+aseo), comprobantes adjuntos, balance mensual y una integración opcional con
+herramientas externas de análisis de datos (BI) como Metabase.
 
-Está desarrollada con **Python + Flask + SQLite** y puede ejecutarse en un servidor Ubuntu pequeño mediante **Gunicorn + systemd + Nginx**.
+Un solo proyecto Flask, sin pasos de compilación de frontend: corre perfecto en
+un VPS pequeño (1 vCPU / 1 GB RAM) o en WSL sobre Windows.
 
-## Funcionalidades
+**Stack:** Python 3 · Flask · SQLAlchemy · SQLite · Bootstrap 5 · Chart.js
 
-* Gestión de habitaciones e inquilinos.
-* Creación de inquilinos sin habitación y posterior asignación o reubicación.
-* Registro de ingresos:
+---
 
-  * Arriendos.
-  * Multas.
-  * Depósitos o garantías.
-  * Otros ingresos.
-* Registro de egresos:
+## Tabla de contenidos
 
-  * Agua.
-  * Gas.
-  * Energía.
-  * Internet/TV.
-  * Impuestos.
-  * Mantenimiento.
-  * Aseo.
-  * Otros.
-* Asociación de movimientos con habitación e inquilino.
-* Histórico general con filtros por fecha, tipo y habitación.
-* Histórico de egresos por categoría.
-* Balance mensual y acumulado.
-* Gráficos de ingresos y egresos.
-* Exportación de información a **PDF y CSV**.
-* Carga de comprobantes en **PDF, JPG, JPEG y PNG**, con límite de 10 MB.
-* Gestión de usuarios con roles `admin` y `usuario`.
-* Recuperación de contraseña mediante pregunta de seguridad para usuarios registrados.
-* Enlaces opcionales a dashboards externos, como Metabase.
+1. [Características](#características)
+2. [Estructura del proyecto](#estructura-del-proyecto)
+3. [Requisitos](#requisitos)
+4. [Instalación](#instalación)
+5. [Configuración (.env)](#configuración-env)
+6. [Puesta en producción](#puesta-en-producción-gunicorn--systemd--nginx)
+7. [Flujo de despliegue con Git](#flujo-de-despliegue-con-git)
+8. [Copias de seguridad](#copias-de-seguridad)
+9. [Integración con Metabase (opcional)](#integración-con-metabase-opcional)
+10. [Reglas de negocio](#reglas-de-negocio)
+11. [Seguridad](#seguridad)
+12. [Changelog](#changelog)
+13. [Licencia](#licencia)
 
-## Tecnologías
+---
 
-### Backend
+## Características
 
-* Python 3
-* Flask 3
-* Flask-SQLAlchemy
-* Flask-WTF
-* SQLite
-* Werkzeug
-* python-dotenv
-* ReportLab
+- **Habitaciones e inquilinos, de forma independiente**: crea inquilinos sin
+  asignarlos a una habitación y asígnalos/reubícalos después. Edición completa
+  de habitaciones (nombre, tarifa, notas) e inquilinos (nombre, documento,
+  teléfono, correo opcional, habitación, estado activo/inactivo).
+- **Ingresos**: pagos de arriendo, multas, depósitos u otros, con inquilino
+  obligatorio y comprobante adjunto opcional (PDF, JPG o PNG).
+- **Egresos por categoría**: Agua, Gas, Energía, Internet/TV Cable, Impuestos,
+  Mantenimiento, Aseo, Otro — también con comprobante adjunto opcional.
+- **Pagos en línea**: botones configurables hacia los portales de pago de cada
+  proveedor de servicios, editables desde la propia interfaz.
+- **Histórico** general y por tipo de egreso, con filtros y exportación a PDF
+  y CSV (`/historico`, `/egresos/historico`).
+- **Balance**: ingresos vs. egresos por mes, ingresos por habitación y egresos
+  por categoría filtrables por período (`/balance`), exportable a PDF.
+- **Multiusuario con roles**: cuenta administradora (`.env`) y cuentas
+  adicionales con rol `admin` o `usuario`; recuperación de contraseña mediante
+  pregunta de seguridad.
+- **Integración opcional con Metabase** (o cualquier otra herramienta de BI):
+  botones configurables que enlazan a dashboards externos conectados
+  directamente a la base de datos SQLite de la app.
 
-### Frontend
+---
 
-* HTML / Jinja2
-* Bootstrap 5
-* JavaScript
-* Chart.js
+## Estructura del proyecto
 
-### Producción
+```
+RentaAdmin/
+├── app.py                   # Backend Flask (modelos, rutas, API de gráficos)
+├── migrar_bd.py              # Script de migración de base de datos (preserva datos)
+├── requirements.txt
+├── .env.example               # Plantilla de configuración — copiar como .env
+├── .gitignore
+├── LICENSE
+├── CHANGELOG.md
+├── README.md
+├── instance/                  # Se crea sola; NO se versiona (datos reales)
+│   ├── rentas.db
+│   └── comprobantes/
+├── templates/                 # Vistas HTML (Jinja2 + Bootstrap 5)
+├── static/css/style.css
+└── deploy/
+    ├── rentas.service         # Servicio systemd (Gunicorn)
+    └── nginx_rentas.conf      # Proxy inverso Nginx
+```
 
-* Gunicorn
-* systemd
-* Nginx
-* Ubuntu
+---
 
-Las dependencias Python están definidas en `requirements.txt`.
+## Requisitos
 
-## Configuración
+- Ubuntu 20.04 / 22.04 / 24.04 (funciona igual dentro de WSL2 sobre Windows)
+- Python 3.10+
+- Acceso `sudo`
+- Un dominio o IP pública si se va a exponer a internet (opcional para uso
+  local/LAN)
 
-Copiar el archivo de ejemplo:
+---
+
+## Instalación
 
 ```bash
-cp .env.example .env
-```
-
-Configurar:
-
-```env
-SECRET_KEY=una-clave-larga-y-aleatoria
-ADMIN_USER=admin
-ADMIN_PASSWORD=una-contraseña-segura
-DATABASE_PATH=instance/rentas.db
-```
-
-`DATABASE_PATH` permite definir la ubicación de la base de datos SQLite.
-
-Para generar una clave segura:
-
-```bash
-python3 -c "import secrets; print(secrets.token_hex(32))"
-```
-
-No subir `.env` al repositorio.
-
-## Instalación local
-
-```bash
-git clone <repositorio>
-cd rentas_app
-
-python3 -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-cp .env.example .env
-```
-
-Ejecutar:
-
-```bash
-python app.py
-```
-
-La aplicación utiliza SQLite y crea automáticamente el directorio `instance/` y el directorio destinado a comprobantes cuando son necesarios.
-
-## Seguridad
-
-La aplicación incorpora:
-
-* Protección CSRF mediante Flask-WTF.
-* Contraseñas almacenadas mediante hash.
-* Respuestas de seguridad almacenadas mediante hash.
-* Control de acceso mediante sesión.
-* Separación de permisos entre `admin` y `usuario`.
-* Validación de archivos subidos.
-* Nombres de archivo seguros.
-* Límite máximo de 10 MB por archivo.
-* Validación de redirecciones posteriores al inicio de sesión.
-
-## Base de datos
-
-La aplicación utiliza una base de datos SQLite:
-
-```text
-instance/rentas.db
-```
-
-Los comprobantes se almacenan en:
-
-```text
-instance/comprobantes/
-```
-
-Los comprobantes permitidos son:
-
-```text
-PDF
-JPG
-JPEG
-PNG
-```
-
-Por seguridad y para mantener la información completa, los respaldos deben incluir **la base de datos y la carpeta de comprobantes**.
-
-## Producción en Ubuntu
-
-Para una instalación de producción se puede utilizar:
-
-```text
-Nginx
-   ↓
-Gunicorn
-   ↓
-Flask
-   ↓
-SQLite
-```
-
-El proyecto incluye archivos de despliegue:
-
-```text
-deploy/
-├── rentas.service
-└── nginx_rentas.conf
-```
-
-Instalación básica:
-
-```bash
-sudo apt update
+sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3 python3-venv python3-pip nginx git ufw
-```
 
-Crear el entorno virtual:
+git clone https://github.com/TU_USUARIO/RentaAdmin.git
+cd RentaAdmin
 
-```bash
-cd /var/www/rentas_app
 python3 -m venv venv
 source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Activar el servicio:
+Prueba en modo desarrollo antes de pasar a producción:
+
+```bash
+cp .env.example .env
+python3 -c "import secrets; print(secrets.token_hex(32))"   # pega el resultado en SECRET_KEY
+nano .env   # define ADMIN_USER / ADMIN_PASSWORD
+
+python app.py
+# abre http://localhost:5000
+```
+
+La primera vez se crea sola la carpeta `instance/` con la base de datos y las
+5 habitaciones de ejemplo. Detén el servidor con `Ctrl+C` cuando confirmes que
+funciona.
+
+---
+
+## Configuración (.env)
+
+| Variable | Obligatoria | Descripción |
+|---|---|---|
+| `SECRET_KEY` | Sí | Clave secreta de Flask (sesiones, CSRF). Genera una con `secrets.token_hex(32)`. |
+| `ADMIN_USER` | Sí | Usuario administrador de respaldo (siempre tiene rol admin). |
+| `ADMIN_PASSWORD` | Sí | Contraseña del usuario administrador de respaldo. |
+| `DATABASE_PATH` | No | Ruta del archivo SQLite. Por defecto `instance/rentas.db`. |
+| `METABASE_URL_BALANCE` | No | Enlace al dashboard de Metabase para el botón "Ver balance". Si se deja vacío, el botón no se muestra. |
+| `METABASE_URL_INGRESOS` | No | Igual, para el botón de Ingresos. |
+| `METABASE_URL_EGRESOS` | No | Igual, para el botón de Egresos. |
+
+---
+
+## Puesta en producción (Gunicorn + systemd + Nginx)
+
+### Permisos
+
+```bash
+sudo chown -R www-data:www-data /ruta/a/RentaAdmin
+```
+
+### Servicio systemd
+
+Ajusta `deploy/rentas.service` si tu ruta de instalación no es
+`/var/www/rentas_app`, luego:
 
 ```bash
 sudo cp deploy/rentas.service /etc/systemd/system/rentas.service
 sudo systemctl daemon-reload
 sudo systemctl enable rentas
 sudo systemctl start rentas
-```
-
-Comprobar:
-
-```bash
 sudo systemctl status rentas
 ```
 
-Logs:
+Logs: `sudo journalctl -u rentas -f`
 
-```bash
-sudo journalctl -u rentas -f
-```
-
-Configurar Nginx:
+### Nginx como proxy inverso
 
 ```bash
 sudo cp deploy/nginx_rentas.conf /etc/nginx/sites-available/rentas
+sudo nano /etc/nginx/sites-available/rentas   # ajusta server_name
 sudo ln -s /etc/nginx/sites-available/rentas /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
+
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
 ```
 
-Para una instalación expuesta a Internet se recomienda utilizar HTTPS.
-
-## Actualización
-
-Antes de actualizar, realizar un respaldo de:
-
-```text
-instance/rentas.db
-instance/comprobantes/
-```
-
-Después:
+### HTTPS gratuito (opcional, con dominio propio)
 
 ```bash
-cd /var/www/rentas_app
-
-git pull origin main
-
-source venv/bin/activate
-pip install -r requirements.txt
-
-sudo systemctl restart rentas
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d tu_dominio.com
 ```
 
-Si una versión requiere cambios en la estructura de la base de datos:
+---
+
+## Flujo de despliegue con Git
+
+Si el servidor es un clon git del repositorio (recomendado), actualizar se
+reduce a:
 
 ```bash
-python migrar_bd.py
+cd /ruta/a/RentaAdmin
+sudo systemctl stop rentas
+git pull
+pip install -r requirements.txt   # solo si cambiaron las dependencias
+python migrar_bd.py               # solo si el esquema de datos cambió (ver CHANGELOG)
+sudo systemctl start rentas
 ```
 
-## Integración con Metabase
-
-La aplicación permite configurar enlaces opcionales hacia dashboards externos.
-
-Variables disponibles:
-
-```env
-METABASE_URL_BALANCE=
-METABASE_URL_INGRESOS=
-METABASE_URL_EGRESOS=
-```
-
-Si no se configuran, los botones correspondientes no se muestran.
-
-Los históricos también pueden exportarse a CSV para utilizarlos posteriormente en herramientas de análisis.
-
-## Estructura principal
-
-```text
-rentas_app/
-├── app.py
-├── migrar_bd.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── README.md
-├── instance/
-│   ├── rentas.db
-│   └── comprobantes/
-├── static/
-├── templates/
-└── deploy/
-    ├── rentas.service
-    └── nginx_rentas.conf
-```
-
-## Mantenimiento
-
-Tareas recomendadas:
-
-* Mantener actualizado el sistema operativo.
-* Mantener las dependencias Python actualizadas cuando corresponda.
-* Realizar copias de seguridad periódicas.
-* No publicar `.env`.
-* No almacenar credenciales directamente en el código.
-* Verificar periódicamente el estado del servicio:
+**Permisos recomendados** para que `git pull` funcione sin `sudo` y Gunicorn
+pueda seguir escribiendo en `instance/`:
 
 ```bash
-sudo systemctl status rentas
+sudo chown -R $USER:$USER /ruta/a/RentaAdmin
+sudo chown -R www-data:www-data /ruta/a/RentaAdmin/instance
+sudo chmod -R g+w /ruta/a/RentaAdmin/instance
+sudo chmod g+s /ruta/a/RentaAdmin/instance
+sudo usermod -aG www-data $USER   # requiere cerrar y volver a abrir la sesión
 ```
 
-## Estado del proyecto
+`migrar_bd.py` crea un respaldo automático con fecha y hora antes de tocar
+nada, y es seguro ejecutarlo más de una vez (no duplica cambios).
 
-Proyecto funcional orientado a la administración de una propiedad con habitaciones en alquiler.
+---
 
-La arquitectura está preparada para continuar incorporando nuevas funcionalidades sin modificar la estructura principal de despliegue.
+## Copias de seguridad
+
+La base de datos es un único archivo SQLite (`instance/rentas.db`). Los
+comprobantes subidos se guardan aparte, en `instance/comprobantes/` —
+**respalda ambas cosas**:
+
+```bash
+mkdir -p ~/backups
+cp instance/rentas.db ~/backups/rentas_$(date +%F).db
+tar -czf ~/backups/comprobantes_$(date +%F).tar.gz -C instance comprobantes
+
+# Cron diario a las 2:00 a.m.
+crontab -e
+0 2 * * * cp /ruta/a/RentaAdmin/instance/rentas.db /home/tu_usuario/backups/rentas_$(date +\%F).db
+0 2 * * * tar -czf /home/tu_usuario/backups/comprobantes_$(date +\%F).tar.gz -C /ruta/a/RentaAdmin/instance comprobantes
+```
+
+---
+
+## Integración con Metabase (opcional)
+
+RentaAdmin puede mostrar botones que enlazan a dashboards externos de
+[Metabase](https://www.metabase.com/) (gratis, de código abierto, con soporte
+nativo para SQLite), conectados directamente a `instance/rentas.db`.
+
+### Instalar Metabase (Docker)
+
+```bash
+sudo apt install -y docker.io
+sudo docker run -d -p 3000:3000 \
+  -v /ruta/a/RentaAdmin/instance:/datos-rentas:ro \
+  --name metabase metabase/metabase
+sudo docker update --restart unless-stopped metabase
+```
+
+Entra a `http://localhost:3000`, añade una base de datos tipo **SQLite**
+apuntando a `/datos-rentas/rentas.db` (el volumen se monta en modo solo
+lectura para no interferir con la app mientras escribe).
+
+### Conectar los botones de RentaAdmin
+
+En tu `.env`, define las URLs de tus dashboards (ver tabla de la
+[sección 5](#configuración-env)).
+
+### Ejemplo de consulta SQL — balance mensual
+
+```sql
+WITH ingresos_mes AS (
+    SELECT strftime('%Y-%m', fecha) AS mes, SUM(monto) AS total_ingresos
+    FROM ingresos GROUP BY mes
+),
+egresos_mes AS (
+    SELECT strftime('%Y-%m', fecha) AS mes, SUM(monto) AS total_egresos
+    FROM egresos GROUP BY mes
+),
+meses AS (
+    SELECT mes FROM ingresos_mes
+    UNION
+    SELECT mes FROM egresos_mes
+)
+SELECT
+    m.mes,
+    COALESCE(i.total_ingresos, 0) - COALESCE(e.total_egresos, 0) AS balance
+FROM meses m
+LEFT JOIN ingresos_mes i ON i.mes = m.mes
+LEFT JOIN egresos_mes e ON e.mes = m.mes
+ORDER BY m.mes;
+```
+
+---
+
+## Reglas de negocio
+
+- Un **inquilino** puede existir sin habitación asignada; se le puede asignar
+  o reubicar en cualquier momento.
+- Una **habitación solo puede tener un inquilino activo a la vez**. La app
+  bloquea la asignación (al crear, editar o asignar un inquilino) si la
+  habitación de destino ya tiene otro inquilino activo — hay que registrar la
+  salida del actual antes de asignar uno nuevo.
+- Los **tipos de ingreso/egreso** están restringidos a listas fijas definidas
+  en el backend (`TIPOS_INGRESO`, `TIPOS_EGRESO`); no se aceptan valores fuera
+  de esas listas, sin importar lo que llegue en la petición.
+- Los **montos monetarios** se almacenan como `Numeric(12,2)` (no `float`),
+  para evitar errores de redondeo binario, y se validan en el servidor
+  (deben ser números positivos), no solo en el HTML del formulario.
+
+---
+
+## Seguridad
+
+RentaAdmin pasó por una revisión de seguridad enfocada en los riesgos típicos
+de una aplicación Flask con formularios y sesiones. Medidas implementadas:
+
+- **CSRF**: todos los formularios POST incluyen un token verificado por
+  `Flask-WTF` (`CSRFProtect`).
+- **Control de acceso por rol**: cuentas `admin` y `usuario`; la gestión de
+  usuarios (crear, eliminar, cambiar contraseña o rol) está restringida a
+  administradores (`@admin_required`).
+- **Sin open redirect**: el parámetro `next` del login se valida contra el
+  propio host antes de usarlo en una redirección.
+- **Validación server-side**: montos, tipos de movimiento y existencia de
+  habitación/inquilino se verifican en el backend, no solo en el navegador.
+- **Reglas de integridad de negocio**: no se permiten dos inquilinos activos
+  en la misma habitación (ver [sección 10](#reglas-de-negocio)).
+- **Contraseñas con hash** (`werkzeug.security`), nunca en texto plano.
+- **Comprobantes protegidos**: los archivos subidos se sirven únicamente a
+  usuarios autenticados, desde una ruta fuera de `static/`.
+
+Si encuentras un problema de seguridad adicional, abre un issue o revisa
+`CHANGELOG.md` para el historial de correcciones.
+
+---
+
+## Changelog
+
+Ver [CHANGELOG.md](CHANGELOG.md) para el historial de versiones y cambios.
+
+---
+
+## Licencia
+
+Este proyecto se distribuye bajo la licencia MIT — ver [LICENSE](LICENSE).
