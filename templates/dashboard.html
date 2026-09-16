@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block titulo %}Panel{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <h2 class="mb-0">Panel general</h2>
+  <a href="http://localhost:3000/dashboard/12?tab=5-ingresos" target="_blank" rel="noopener" class="btn btn-primary">
+    <i class="bi bi-bar-chart-line-fill"></i> Ver balance y gráficos completos
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-bg-success h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Ingresos del mes</h6>
+        <p class="display-6 mb-0">${{ "{:,.0f}".format(total_ingresos_mes) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-danger h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Egresos del mes</h6>
+        <p class="display-6 mb-0">${{ "{:,.0f}".format(total_egresos_mes) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card {% if balance_mes >= 0 %}text-bg-primary{% else %}text-bg-warning{% endif %} h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Balance del mes</h6>
+        <p class="display-6 mb-0">${{ "{:,.0f}".format(balance_mes) }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Ocupación</h6>
+        <p class="fs-3 mb-0">{{ ocupadas }} / {{ total_habitaciones }}</p>
+        <small class="text-muted">habitaciones ocupadas</small>
+      </div>
+    </div>
+  </div>
+  {# OCULTAS A PEDIDO DEL USUARIO (13/09/2026) - no eliminar, solo comentadas:
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Ingresos históricos</h6>
+        <p class="fs-4 mb-0">${{ "{:,.0f}".format(total_ingresos_hist) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Egresos históricos</h6>
+        <p class="fs-4 mb-0">${{ "{:,.0f}".format(total_egresos_hist) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Balance histórico</h6>
+        <p class="fs-4 mb-0">${{ "{:,.0f}".format(balance_hist) }}</p>
+      </div>
+    </div>
+  </div>
+  #}
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Estado de habitaciones</h5>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Habitación</th><th>Tarifa mensual</th><th>Inquilino actual</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for h in habitaciones %}
+          <tr>
+            <td>{{ h.nombre }}</td>
+            <td>${{ "{:,.0f}".format(h.tarifa_mensual) }}</td>
+            <td>{{ h.inquilino_activo.nombre if h.inquilino_activo else "—" }}</td>
+            <td>
+              {% if h.inquilino_activo %}
+                <span class="badge bg-success">Ocupada</span>
+              {% else %}
+                <span class="badge bg-secondary">Vacía</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titulo %}Editar inquilino{% endblock %}
+{% block contenido %}
+<h2 class="mb-4">Editar inquilino</h2>
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label">Nombre</label>
+            <input type="text" name="nombre" class="form-control" value="{{ i.nombre }}" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Número de documento</label>
+            <input type="text" name="documento" class="form-control" value="{{ i.documento or '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="telefono" class="form-control" value="{{ i.telefono or '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Correo (opcional)</label>
+            <input type="email" name="email" class="form-control" value="{{ i.email or '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Habitación</label>
+            <select name="habitacion_id" class="form-select">
+              <option value="">— Sin asignar —</option>
+              {% for h in habitaciones %}
+                <option value="{{ h.id }}" {% if i.habitacion_id == h.id %}selected{% endif %}>{{ h.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Fecha de ingreso</label>
+            <input type="date" name="fecha_ingreso" class="form-control" value="{{ i.fecha_ingreso.isoformat() if i.fecha_ingreso else '' }}">
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" name="activo" class="form-check-input" id="activoCheck" {% if i.activo %}checked{% endif %}>
+            <label class="form-check-label" for="activoCheck">Inquilino activo</label>
+          </div>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+          <a href="{{ url_for('habitaciones') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

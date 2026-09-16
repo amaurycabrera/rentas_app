@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block titulo %}Egresos{% endblock %}
+{% block contenido %}
+<h2 class="mb-4">Egresos</h2>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Pagos en línea de servicios</h5>
+    <p class="text-muted small mb-3">Accesos directos a los portales oficiales de pago. Puedes agregar más cuando lo necesites.</p>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      {% for enlace in enlaces %}
+        <div class="btn-group">
+          <a href="{{ enlace.url }}" target="_blank" rel="noopener" class="btn btn-primary">
+            <i class="bi bi-box-arrow-up-right"></i> {{ enlace.nombre }}
+          </a>
+          <form method="post" action="{{ url_for('eliminar_enlace_pago', enlace_id=enlace.id) }}" onsubmit="return confirm('¿Quitar este enlace de pago?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary" title="Quitar"><i class="bi bi-x"></i></button>
+          </form>
+        </div>
+      {% else %}
+        <span class="text-muted">No hay enlaces de pago configurados todavía.</span>
+      {% endfor %}
+    </div>
+    <form method="post" action="{{ url_for('crear_enlace_pago') }}" class="row g-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-4">
+        <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre (ej: Internet — Claro)" required>
+      </div>
+      <div class="col-md-6">
+        <input type="url" name="url" class="form-control form-control-sm" placeholder="https://..." required>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Agregar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Registrar egreso</h5>
+        <form method="post" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label">Fecha</label>
+            <input type="date" name="fecha" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Tipo</label>
+            <select name="tipo" class="form-select" required>
+              {% for valor, etiqueta in tipos %}
+                <option value="{{ valor }}">{{ etiqueta }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Concepto</label>
+            <input type="text" name="concepto" class="form-control" placeholder="Ej: Factura de energía - septiembre">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Monto</label>
+            <input type="number" step="0.01" min="0" name="monto" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Comprobante (opcional)</label>
+            <input type="file" name="comprobante" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+            <div class="form-text">PDF, JPG o PNG, máx. 10 MB.</div>
+          </div>
+          <button type="submit" class="btn btn-danger w-100">Registrar egreso</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="card-title mb-0">Últimos egresos</h5>
+          {% if metabase_url_egresos %}
+          <a href="{{ metabase_url_egresos }}" target="_blank" rel="noopener" class="btn btn-primary">
+            <i class="bi bi-graph-up"></i> Ver egresos y gráficos por tipo
+          </a>
+          {% endif %}
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th class="text-end">Monto</th><th></th><th></th></tr></thead>
+            <tbody>
+            {% for e in egresos %}
+              <tr>
+                <td>{{ e.fecha.strftime('%d/%m/%Y') }}</td>
+                <td>{{ e.tipo|tipo_label(tipos) }}</td>
+                <td>{{ e.concepto or "-" }}</td>
+                <td class="text-end">${{ "{:,.0f}".format(e.monto) }}</td>
+                <td>
+                  {% if e.comprobante %}
+                    <a href="{{ url_for('ver_comprobante', nombre_archivo=e.comprobante) }}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Ver comprobante"><i class="bi bi-paperclip"></i></a>
+                  {% endif %}
+                </td>
+                <td>
+                  <form method="post" action="{{ url_for('eliminar_egreso', egreso_id=e.id) }}" onsubmit="return confirm('¿Eliminar este egreso?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted">Sin egresos registrados.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted small mb-2">Mostrando {{ egresos|length }} de {{ total_registros }} egresos.</p>
+        {% if total_registros > limite %}
+          <a href="{{ url_for('egresos') }}?limite={{ limite + 40 }}" class="btn btn-outline-secondary btn-sm">Ver más</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de egresos{% endblock %}
+{% block contenido %}
+<h2 class="mb-4">Histórico de egresos</h2>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Tipo de egreso</label>
+        <select name="tipo" class="form-select">
+          <option value="todos" {% if filtros.tipo=='todos' %}selected{% endif %}>Todos</option>
+          {% for valor, etiqueta in tipos %}
+            <option value="{{ valor }}" {% if filtros.tipo==valor %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Desde</label>
+        <input type="date" name="desde" class="form-control" value="{{ filtros.desde }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Hasta</label>
+        <input type="date" name="hasta" class="form-control" value="{{ filtros.hasta }}">
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
+        <a id="linkCsv" href="#" class="btn btn-outline-success"><i class="bi bi-filetype-csv"></i></a>
+        <a id="linkPdf" href="#" class="btn btn-outline-danger"><i class="bi bi-filetype-pdf"></i></a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Máximo</h6>
+        <p class="fs-4 mb-0">${{ "{:,.0f}".format(stats.maximo) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Mínimo</h6>
+        <p class="fs-4 mb-0">${{ "{:,.0f}".format(stats.minimo) }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title text-muted">Promedio</h6>
+        <p class="fs-4 mb-0">${{ "{:,.0f}".format(stats.promedio) }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Evolución mensual (últimos 12 meses)</h5>
+    <canvas id="graficoSerieEgresos" height="100"></canvas>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="card-title mb-0">Movimientos ({{ egresos|length }})</h5>
+      <h5 class="mb-0 text-danger">Total: ${{ "{:,.0f}".format(total_filtrado) }}</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th class="text-end">Monto</th><th></th></tr></thead>
+        <tbody>
+        {% for e in egresos %}
+          <tr>
+            <td>{{ e.fecha.strftime('%d/%m/%Y') }}</td>
+            <td>{{ e.tipo|tipo_label(tipos) }}</td>
+            <td>{{ e.concepto or "-" }}</td>
+            <td class="text-end">${{ "{:,.0f}".format(e.monto) }}</td>
+            <td>
+              {% if e.comprobante %}
+                <a href="{{ url_for('ver_comprobante', nombre_archivo=e.comprobante) }}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Ver comprobante"><i class="bi bi-paperclip"></i></a>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-center text-muted">No hay egresos para los filtros seleccionados.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const tipoActual = "{{ filtros.tipo }}";
+
+document.getElementById('linkPdf').href =
+  "{{ url_for('historico_egresos_pdf') }}?tipo=" + encodeURIComponent(tipoActual) +
+  "&desde={{ filtros.desde }}&hasta={{ filtros.hasta }}";
+document.getElementById('linkCsv').href =
+  "{{ url_for('historico_egresos_csv') }}?tipo=" + encodeURIComponent(tipoActual) +
+  "&desde={{ filtros.desde }}&hasta={{ filtros.hasta }}";
+
+async function cargarGrafico() {
+  const resp = await fetch("{{ url_for('api_egresos_serie_temporal') }}?tipo=" + encodeURIComponent(tipoActual));
+  const datos = await resp.json();
+  const paleta = ['#0d6efd','#dc3545','#198754','#ffc107','#6f42c1','#20c997','#fd7e14','#6610f2'];
+
+  new Chart(document.getElementById('graficoSerieEgresos'), {
+    type: 'line',
+    data: {
+      labels: datos.etiquetas,
+      datasets: datos.series.map((s, idx) => ({
+        label: s.nombre,
+        data: s.valores,
+        borderColor: paleta[idx % paleta.length],
+        backgroundColor: paleta[idx % paleta.length] + '33',
+        fill: datos.series.length === 1,
+        tension: 0,
+      }))
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+}
+cargarGrafico();
+</script>
+{% endblock %}

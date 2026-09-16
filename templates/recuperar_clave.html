@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titulo %}Recuperar contraseña{% endblock %}
+{% block contenido %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h4 class="card-title mb-3 text-center"><i class="bi bi-key-fill"></i> Recuperar contraseña</h4>
+
+        {% if paso == 1 %}
+          <p class="text-muted small">Escribe tu nombre de usuario para continuar.</p>
+          <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="etapa" value="buscar">
+            <div class="mb-3">
+              <label class="form-label">Usuario</label>
+              <input type="text" name="usuario" class="form-control" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Continuar</button>
+          </form>
+        {% else %}
+          <p class="text-muted small">Responde tu pregunta de seguridad y define una nueva contraseña.</p>
+          <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="etapa" value="restablecer">
+            <div class="mb-2">
+              <label class="form-label">{{ usuario.pregunta_seguridad }}</label>
+              <input type="text" name="respuesta" class="form-control" required autofocus>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Nueva contraseña</label>
+              <input type="password" name="nueva_clave" class="form-control" required minlength="4">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirmar nueva contraseña</label>
+              <input type="password" name="confirmar_clave" class="form-control" required minlength="4">
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Restablecer contraseña</button>
+          </form>
+        {% endif %}
+
+        <div class="text-center mt-3">
+          <a href="{{ url_for('login') }}">Volver a iniciar sesión</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block titulo %}Usuarios{% endblock %}
+{% block contenido %}
+<h2 class="mb-4">Usuarios del sistema</h2>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Cuentas registradas</h5>
+        <p class="text-muted small">
+          Además de estas cuentas, existe la cuenta administradora <strong>{{ admin_user }}</strong>,
+          definida en el archivo <code>.env</code> del servidor (no se gestiona desde aquí).
+        </p>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Creado</th><th>Nueva contraseña</th><th></th></tr></thead>
+            <tbody>
+            {% for u in usuarios %}
+              <tr>
+                <td>{{ u.nombre_usuario }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('cambiar_rol_usuario', usuario_id=u.id) }}" class="d-flex gap-1">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="rol" class="form-select form-select-sm" onchange="this.form.submit()">
+                      <option value="usuario" {% if u.rol == 'usuario' %}selected{% endif %}>Usuario</option>
+                      <option value="admin" {% if u.rol == 'admin' %}selected{% endif %}>Administrador</option>
+                    </select>
+                  </form>
+                </td>
+                <td>{{ u.creado_en.strftime('%d/%m/%Y') if u.creado_en else "-" }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('cambiar_clave_usuario', usuario_id=u.id) }}" class="d-flex gap-1">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="password" name="nueva_clave" class="form-control form-control-sm" placeholder="Nueva contraseña" required minlength="4">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Cambiar</button>
+                  </form>
+                </td>
+                <td>
+                  <form method="post" action="{{ url_for('eliminar_usuario', usuario_id=u.id) }}" onsubmit="return confirm('¿Eliminar este usuario?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="text-center text-muted">No hay usuarios adicionales creados todavía.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted small mb-0">
+          <strong>Administrador:</strong> puede gestionar usuarios y todo lo demás.
+          <strong>Usuario:</strong> puede usar la app normalmente, pero no ve la sección "Usuarios".
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Crear nuevo usuario</h5>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label">Nombre de usuario</label>
+            <input type="text" name="nombre_usuario" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Contraseña</label>
+            <input type="password" name="clave" class="form-control" required minlength="4">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Rol</label>
+            <select name="rol" class="form-select">
+              <option value="usuario" selected>Usuario</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Pregunta de seguridad</label>
+            <select name="pregunta_seguridad" class="form-select" required>
+              {% for p in preguntas %}
+                <option value="{{ p }}">{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Respuesta de seguridad</label>
+            <input type="text" name="respuesta_seguridad" class="form-control" required>
+            <div class="form-text">Se usará para recuperar la contraseña si se olvida. No distingue mayúsculas.</div>
+          </div>
+          <button type="submit" class="btn btn-primary">Crear usuario</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico{% endblock %}
+{% block contenido %}
+<h2 class="mb-4">Histórico de movimientos</h2>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">Desde</label>
+        <input type="date" name="desde" class="form-control" value="{{ filtros.desde }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Hasta</label>
+        <input type="date" name="hasta" class="form-control" value="{{ filtros.hasta }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Tipo de movimiento</label>
+        <select name="tipo_mov" class="form-select">
+          <option value="todos" {% if filtros.tipo_mov=='todos' %}selected{% endif %}>Todos</option>
+          <option value="ingresos" {% if filtros.tipo_mov=='ingresos' %}selected{% endif %}>Solo ingresos</option>
+          <option value="egresos" {% if filtros.tipo_mov=='egresos' %}selected{% endif %}>Solo egresos</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Habitación</label>
+        <select name="habitacion_id" class="form-select">
+          <option value="">Todas</option>
+          {% for h in habitaciones %}
+            <option value="{{ h.id }}" {% if filtros.habitacion_id|string == h.id|string %}selected{% endif %}>{{ h.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if filtros.tipo_mov in ('todos', 'ingresos') %}
+<div class="row g-3 mb-3">
+  <div class="col-12"><h6 class="text-muted mb-1">Estadísticas de ingresos (según filtro)</h6></div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm"><div class="card-body py-2">
+      <small class="text-muted">Máximo</small><p class="fs-5 mb-0">${{ "{:,.0f}".format(stats_ingresos.maximo) }}</p>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm"><div class="card-body py-2">
+      <small class="text-muted">Mínimo</small><p class="fs-5 mb-0">${{ "{:,.0f}".format(stats_ingresos.minimo) }}</p>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm"><div class="card-body py-2">
+      <small class="text-muted">Promedio</small><p class="fs-5 mb-0">${{ "{:,.0f}".format(stats_ingresos.promedio) }}</p>
+    </div></div>
+  </div>
+</div>
+{% endif %}
+
+{% if filtros.tipo_mov in ('todos', 'egresos') %}
+<div class="row g-3 mb-4">
+  <div class="col-12"><h6 class="text-muted mb-1">Estadísticas de egresos (según filtro)</h6></div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm"><div class="card-body py-2">
+      <small class="text-muted">Máximo</small><p class="fs-5 mb-0">${{ "{:,.0f}".format(stats_egresos.maximo) }}</p>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm"><div class="card-body py-2">
+      <small class="text-muted">Mínimo</small><p class="fs-5 mb-0">${{ "{:,.0f}".format(stats_egresos.minimo) }}</p>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-light h-100 shadow-sm"><div class="card-body py-2">
+      <small class="text-muted">Promedio</small><p class="fs-5 mb-0">${{ "{:,.0f}".format(stats_egresos.promedio) }}</p>
+    </div></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="card-title mb-0">Movimientos ({{ movimientos|length }})</h5>
+      <div class="d-flex align-items-center gap-3">
+        <h5 class="mb-0 {% if total_periodo >= 0 %}text-success{% else %}text-danger{% endif %}">
+          Total: ${{ "{:,.0f}".format(total_periodo) }}
+        </h5>
+        <a href="{{ url_for('historico_csv') }}?desde={{ filtros.desde }}&hasta={{ filtros.hasta }}&tipo_mov={{ filtros.tipo_mov }}&habitacion_id={{ filtros.habitacion_id }}" class="btn btn-outline-success btn-sm">
+          <i class="bi bi-filetype-csv"></i> CSV
+        </a>
+        <a href="{{ url_for('historico_pdf') }}?desde={{ filtros.desde }}&hasta={{ filtros.hasta }}&tipo_mov={{ filtros.tipo_mov }}&habitacion_id={{ filtros.habitacion_id }}" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-filetype-pdf"></i> PDF
+        </a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Fecha</th><th>Movimiento</th><th>Tipo</th><th>Habitación</th><th>Concepto</th><th class="text-end">Monto</th><th></th></tr></thead>
+        <tbody>
+        {% for m in movimientos %}
+          <tr>
+            <td>{{ m.fecha.strftime('%d/%m/%Y') }}</td>
+            <td>
+              {% if m.clase == 'Ingreso' %}
+                <span class="badge bg-success">Ingreso</span>
+              {% else %}
+                <span class="badge bg-danger">Egreso</span>
+              {% endif %}
+            </td>
+            <td>{{ m.tipo }}</td>
+            <td>{{ m.habitacion }}</td>
+            <td>{{ m.concepto }}</td>
+            <td class="text-end {% if m.monto < 0 %}text-danger{% else %}text-success{% endif %}">
+              {{ "{:,.0f}".format(m.monto) }}
+            </td>
+            <td>
+              {% if m.comprobante %}
+                <a href="{{ url_for('ver_comprobante', nombre_archivo=m.comprobante) }}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Ver comprobante"><i class="bi bi-paperclip"></i></a>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="text-center text-muted">No hay movimientos para los filtros seleccionados.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

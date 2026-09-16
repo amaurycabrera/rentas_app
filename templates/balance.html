@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block titulo %}Balance{% endblock %}
+{% block contenido %}
+<h2 class="mb-4 d-flex justify-content-between align-items-center">
+  Balance y gráficos
+  <a href="{{ url_for('balance_pdf') }}" class="btn btn-outline-danger btn-sm"><i class="bi bi-filetype-pdf"></i> Exportar PDF</a>
+</h2>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Ingresos vs. Egresos (últimos 12 meses)</h5>
+        <canvas id="graficoMensual" height="110"></canvas>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Balance por mes</h5>
+        <canvas id="graficoBalance" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="card-title mb-0">Período de las gráficas de torta</h6>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label small mb-1">Desde</label>
+            <input type="date" id="periodoDesde" class="form-control form-control-sm">
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Hasta</label>
+            <input type="date" id="periodoHasta" class="form-control form-control-sm">
+          </div>
+          <div class="col-12">
+            <button id="btnFiltrarPeriodo" class="btn btn-outline-primary btn-sm w-100 mt-1">Filtrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Ingresos por habitación</h5>
+        <canvas id="graficoHabitaciones"></canvas>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Egresos por categoría</h5>
+        <canvas id="graficoEgresos"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const paleta = ['#0d6efd','#dc3545','#198754','#ffc107','#6f42c1','#20c997','#fd7e14','#6610f2'];
+let graficoHabitacionesChart = null;
+let graficoEgresosChart = null;
+
+async function cargarGraficosMensuales() {
+  const mensual = await fetch("{{ url_for('api_balance_mensual') }}").then(r => r.json());
+
+  new Chart(document.getElementById('graficoMensual'), {
+    type: 'bar',
+    data: {
+      labels: mensual.etiquetas,
+      datasets: [
+        { label: 'Ingresos', data: mensual.ingresos, backgroundColor: '#198754' },
+        { label: 'Egresos', data: mensual.egresos, backgroundColor: '#dc3545' },
+      ]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Línea recta (sin curvas suavizadas): tension = 0
+  new Chart(document.getElementById('graficoBalance'), {
+    type: 'line',
+    data: {
+      labels: mensual.etiquetas,
+      datasets: [{
+        label: 'Balance del mes',
+        data: mensual.balance,
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13,110,253,0.15)',
+        fill: true,
+        tension: 0,
+      }]
+    },
+    options: { responsive: true }
+  });
+}
+
+async function cargarGraficosDeTorta(desde, hasta) {
+  const params = new URLSearchParams({ desde: desde || '', hasta: hasta || '' });
+  const [porHabitacion, porTipoEgreso] = await Promise.all([
+    fetch("{{ url_for('api_ingresos_por_habitacion') }}?" + params).then(r => r.json()),
+    fetch("{{ url_for('api_egresos_por_tipo') }}?" + params).then(r => r.json()),
+  ]);
+
+  if (graficoHabitacionesChart) graficoHabitacionesChart.destroy();
+  graficoHabitacionesChart = new Chart(document.getElementById('graficoHabitaciones'), {
+    type: 'pie',
+    data: {
+      labels: porHabitacion.etiquetas,
+      datasets: [{ data: porHabitacion.valores, backgroundColor: paleta }]
+    },
+    options: { responsive: true }
+  });
+
+  if (graficoEgresosChart) graficoEgresosChart.destroy();
+  graficoEgresosChart = new Chart(document.getElementById('graficoEgresos'), {
+    type: 'doughnut',
+    data: {
+      labels: porTipoEgreso.etiquetas,
+      datasets: [{ data: porTipoEgreso.valores, backgroundColor: paleta }]
+    },
+    options: { responsive: true }
+  });
+}
+
+// Por defecto, el período de las tortas es el mes actual completo
+const hoy = new Date();
+const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+document.getElementById('periodoDesde').value = primerDiaMes.toISOString().slice(0, 10);
+document.getElementById('periodoHasta').value = hoy.toISOString().slice(0, 10);
+
+document.getElementById('btnFiltrarPeriodo').addEventListener('click', () => {
+  cargarGraficosDeTorta(
+    document.getElementById('periodoDesde').value,
+    document.getElementById('periodoHasta').value
+  );
+});
+
+cargarGraficosMensuales();
+cargarGraficosDeTorta(document.getElementById('periodoDesde').value, document.getElementById('periodoHasta').value);
+</script>
+{% endblock %}

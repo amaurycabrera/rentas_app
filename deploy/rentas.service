@@ -1,0 +1,16 @@
+[Unit]
+Description=Aplicacion de administracion de arriendos (Gunicorn)
+After=network.target
+
+[Service]
+# Ajusta usuario, grupo y rutas segun tu servidor
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/rentas_app
+EnvironmentFile=/var/www/rentas_app/.env
+ExecStart=/var/www/rentas_app/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

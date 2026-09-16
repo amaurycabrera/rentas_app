@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Editar habitación{% endblock %}
+{% block contenido %}
+<h2 class="mb-4">Editar habitación</h2>
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-2">
+            <label class="form-label">Nombre</label>
+            <input type="text" name="nombre" class="form-control" value="{{ h.nombre }}" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Tarifa mensual</label>
+            <input type="number" step="0.01" name="tarifa_mensual" class="form-control" value="{{ h.tarifa_mensual }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notas</label>
+            <input type="text" name="notas" class="form-control" value="{{ h.notas or '' }}">
+          </div>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+          <a href="{{ url_for('habitaciones') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
