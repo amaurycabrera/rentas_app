@@ -24,7 +24,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="etapa" value="restablecer">
             <div class="mb-2">
-              <label class="form-label">{{ usuario.pregunta_seguridad }}</label>
+              <label class="form-label">{{ pregunta }}</label>
               <input type="text" name="respuesta" class="form-control" required autofocus>
             </div>
             <div class="mb-2">

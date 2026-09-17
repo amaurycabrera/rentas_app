@@ -79,12 +79,18 @@
             </select>
           </div>
           <div class="mb-2">
-            <label class="form-label">Pregunta de seguridad</label>
-            <select name="pregunta_seguridad" class="form-select" required>
+            <label class="form-label">Pregunta de seguridad (escribe la tuya)</label>
+            <input type="text" name="pregunta_seguridad" class="form-control" list="sugerenciasPregunta" required
+                   placeholder="Ej: algo que solo tú sabrías responder">
+            <datalist id="sugerenciasPregunta">
               {% for p in preguntas %}
-                <option value="{{ p }}">{{ p }}</option>
+                <option value="{{ p }}">
               {% endfor %}
-            </select>
+            </datalist>
+            <div class="form-text">
+              Evita datos públicos o fáciles de investigar (mascota, comida favorita, ciudad natal).
+              Mejor algo que solo tú sepas.
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label">Respuesta de seguridad</label>

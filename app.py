@@ -81,12 +81,17 @@ TIPOS_EGRESO = [
     ("otro", "Otro egreso"),
 ]
 
-PREGUNTAS_SEGURIDAD = [
-    "¿Cuál es el nombre de tu primera mascota?",
-    "¿Cuál es tu comida favorita?",
-    "¿En qué ciudad naciste?",
-    "¿Cuál es el nombre de tu mejor amigo/a de la infancia?",
+PREGUNTAS_SEGURIDAD_SUGERIDAS = [
+    "¿Cuál fue el nombre de tu primer trabajo?",
+    "¿Cuál es el apodo que solo usa tu familia?",
+    "¿Cuál fue el modelo de tu primer carro o moto?",
+    "Escribe una pregunta propia que solo tú sepas responder",
 ]
+
+# Pregunta que se muestra cuando el usuario del formulario de recuperación NO
+# existe, para no revelar esa información por la sola presencia/ausencia de
+# una pregunta real (ver recuperar_clave()).
+PREGUNTA_SEGURIDAD_SENUELO = "¿Cuál es tu pregunta de seguridad?"
 
 
 # --------------------------------------------------------------------------
@@ -252,60 +257,60 @@ def logout():
 @app.route("/recuperar-clave", methods=["GET", "POST"])
 def recuperar_clave():
     paso = 1
-    usuario_encontrado = None
+    pregunta_mostrar = None
 
     if request.method == "POST":
         etapa = request.form.get("etapa")
 
         if etapa == "buscar":
             nombre_usuario = request.form.get("usuario", "").strip()
-            if nombre_usuario == ADMIN_USER:
-                flash("El usuario administrador definido en el servidor no se recupera desde aquí; "
-                      "pide a quien administra el servidor que revise el archivo .env.", "warning")
-            else:
+            u = None
+            if nombre_usuario and nombre_usuario != ADMIN_USER:
                 u = Usuario.query.filter_by(nombre_usuario=nombre_usuario).first()
-                if u:
-                    session["recuperar_usuario_id"] = u.id
-                    paso = 2
-                    usuario_encontrado = u
-                else:
-                    flash("No existe ningún usuario con ese nombre.", "danger")
+            # Nunca revelamos si el usuario existe: siempre se avanza al paso 2,
+            # mostrando una pregunta real (si existe) o una genérica (si no),
+            # para no permitir enumerar cuentas por el mensaje de respuesta.
+            session["recuperar_usuario_id"] = u.id if u else None
+            paso = 2
+            pregunta_mostrar = u.pregunta_seguridad if u else PREGUNTA_SEGURIDAD_SENUELO
 
         elif etapa == "restablecer":
             usuario_id = session.get("recuperar_usuario_id")
             u = Usuario.query.get(usuario_id) if usuario_id else None
-            if not u:
-                flash("La sesión de recuperación expiró, intenta de nuevo.", "warning")
+            respuesta = request.form.get("respuesta", "")
+            nueva_clave = request.form.get("nueva_clave", "")
+            confirmar = request.form.get("confirmar_clave", "")
+
+            # Mismo mensaje tanto si la cuenta no existe (u is None) como si la
+            # respuesta es incorrecta: desde afuera, ambos casos se ven iguales.
+            if not u or not u.check_respuesta(respuesta):
+                flash("La respuesta de seguridad no es correcta.", "danger")
+                paso = 2
+                pregunta_mostrar = u.pregunta_seguridad if u else PREGUNTA_SEGURIDAD_SENUELO
+            elif len(nueva_clave) < 4:
+                flash("La nueva contraseña debe tener al menos 4 caracteres.", "danger")
+                paso = 2
+                pregunta_mostrar = u.pregunta_seguridad
+            elif nueva_clave != confirmar:
+                flash("Las contraseñas no coinciden.", "danger")
+                paso = 2
+                pregunta_mostrar = u.pregunta_seguridad
             else:
-                respuesta = request.form.get("respuesta", "")
-                nueva_clave = request.form.get("nueva_clave", "")
-                confirmar = request.form.get("confirmar_clave", "")
-                if not u.check_respuesta(respuesta):
-                    flash("La respuesta de seguridad no es correcta.", "danger")
-                    paso = 2
-                    usuario_encontrado = u
-                elif len(nueva_clave) < 4:
-                    flash("La nueva contraseña debe tener al menos 4 caracteres.", "danger")
-                    paso = 2
-                    usuario_encontrado = u
-                elif nueva_clave != confirmar:
-                    flash("Las contraseñas no coinciden.", "danger")
-                    paso = 2
-                    usuario_encontrado = u
-                else:
-                    u.set_password(nueva_clave)
-                    db.session.commit()
-                    session.pop("recuperar_usuario_id", None)
-                    flash("Contraseña actualizada. Ya puedes iniciar sesión.", "success")
-                    return redirect(url_for("login"))
+                u.set_password(nueva_clave)
+                db.session.commit()
+                session.pop("recuperar_usuario_id", None)
+                flash("Contraseña actualizada. Ya puedes iniciar sesión.", "success")
+                return redirect(url_for("login"))
 
-    # Si venimos de un paso 2 fallido, o de un GET con sesión de recuperación activa
-    if paso == 1 and session.get("recuperar_usuario_id") and request.method == "GET":
-        usuario_encontrado = Usuario.query.get(session["recuperar_usuario_id"])
-        if usuario_encontrado:
-            paso = 2
+    # Si venimos de un GET con una recuperación en curso (por ejemplo, tras
+    # recargar la página), retomamos el paso 2 con la misma pregunta.
+    if paso == 1 and "recuperar_usuario_id" in session and request.method == "GET":
+        usuario_id = session.get("recuperar_usuario_id")
+        u = Usuario.query.get(usuario_id) if usuario_id else None
+        paso = 2
+        pregunta_mostrar = u.pregunta_seguridad if u else PREGUNTA_SEGURIDAD_SENUELO
 
-    return render_template("recuperar_clave.html", paso=paso, usuario=usuario_encontrado)
+    return render_template("recuperar_clave.html", paso=paso, pregunta=pregunta_mostrar)
 
 
 # --------------------------------------------------------------------------
@@ -678,13 +683,13 @@ def usuarios():
     if request.method == "POST":
         nombre_usuario = request.form.get("nombre_usuario", "").strip()
         clave = request.form.get("clave", "")
-        pregunta = request.form.get("pregunta_seguridad", "")
+        pregunta = request.form.get("pregunta_seguridad", "").strip()
         respuesta = request.form.get("respuesta_seguridad", "").strip()
         rol = request.form.get("rol", "usuario")
         if rol not in ("admin", "usuario"):
             rol = "usuario"
 
-        if not nombre_usuario or not clave or not respuesta:
+        if not nombre_usuario or not clave or not pregunta or not respuesta:
             flash("Todos los campos son obligatorios para crear un usuario.", "danger")
         elif nombre_usuario == ADMIN_USER or Usuario.query.filter_by(nombre_usuario=nombre_usuario).first():
             flash("Ese nombre de usuario ya está en uso.", "danger")
@@ -698,7 +703,7 @@ def usuarios():
         return redirect(url_for("usuarios"))
 
     lista = Usuario.query.order_by(Usuario.nombre_usuario).all()
-    return render_template("usuarios.html", usuarios=lista, preguntas=PREGUNTAS_SEGURIDAD,
+    return render_template("usuarios.html", usuarios=lista, preguntas=PREGUNTAS_SEGURIDAD_SUGERIDAS,
                             admin_user=ADMIN_USER)
 
 
