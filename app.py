@@ -52,6 +52,8 @@ db = SQLAlchemy(app)
 csrf = CSRFProtect(app)  # Protección CSRF para todas las rutas POST/PUT/PATCH/DELETE
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
+
+LONGITUD_MINIMA_CLAVE = 8  # mínimo de caracteres exigido para cualquier contraseña
 ADMIN_PASSWORD_HASH = generate_password_hash(
     os.environ.get("ADMIN_PASSWORD", "admin123")
 )
@@ -210,12 +212,13 @@ def admin_required(f):
 
 @app.context_processor
 def inject_metabase_urls():
-    """Pone los enlaces opcionales a Metabase disponibles en todas las plantillas
-    sin tener que pasarlos manualmente en cada ruta."""
+    """Pone los enlaces opcionales a Metabase (y otras constantes de configuración)
+    disponibles en todas las plantillas sin tener que pasarlas en cada ruta."""
     return dict(
         metabase_url_balance=METABASE_URL_BALANCE,
         metabase_url_ingresos=METABASE_URL_INGRESOS,
         metabase_url_egresos=METABASE_URL_EGRESOS,
+        longitud_minima_clave=LONGITUD_MINIMA_CLAVE,
     )
 
 
@@ -287,8 +290,8 @@ def recuperar_clave():
                 flash("La respuesta de seguridad no es correcta.", "danger")
                 paso = 2
                 pregunta_mostrar = u.pregunta_seguridad if u else PREGUNTA_SEGURIDAD_SENUELO
-            elif len(nueva_clave) < 4:
-                flash("La nueva contraseña debe tener al menos 4 caracteres.", "danger")
+            elif len(nueva_clave) < LONGITUD_MINIMA_CLAVE:
+                flash(f"La nueva contraseña debe tener al menos {LONGITUD_MINIMA_CLAVE} caracteres.", "danger")
                 paso = 2
                 pregunta_mostrar = u.pregunta_seguridad
             elif nueva_clave != confirmar:
@@ -691,6 +694,8 @@ def usuarios():
 
         if not nombre_usuario or not clave or not pregunta or not respuesta:
             flash("Todos los campos son obligatorios para crear un usuario.", "danger")
+        elif len(clave) < LONGITUD_MINIMA_CLAVE:
+            flash(f"La contraseña debe tener al menos {LONGITUD_MINIMA_CLAVE} caracteres.", "danger")
         elif nombre_usuario == ADMIN_USER or Usuario.query.filter_by(nombre_usuario=nombre_usuario).first():
             flash("Ese nombre de usuario ya está en uso.", "danger")
         else:
@@ -722,8 +727,8 @@ def eliminar_usuario(usuario_id):
 def cambiar_clave_usuario(usuario_id):
     u = Usuario.query.get_or_404(usuario_id)
     nueva_clave = request.form.get("nueva_clave", "")
-    if len(nueva_clave) < 4:
-        flash("La contraseña debe tener al menos 4 caracteres.", "danger")
+    if len(nueva_clave) < LONGITUD_MINIMA_CLAVE:
+        flash(f"La contraseña debe tener al menos {LONGITUD_MINIMA_CLAVE} caracteres.", "danger")
     else:
         u.set_password(nueva_clave)
         db.session.commit()

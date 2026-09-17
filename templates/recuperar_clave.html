@@ -29,11 +29,11 @@
             </div>
             <div class="mb-2">
               <label class="form-label">Nueva contraseña</label>
-              <input type="password" name="nueva_clave" class="form-control" required minlength="4">
+              <input type="password" name="nueva_clave" class="form-control" required minlength="{{ longitud_minima_clave }}">
             </div>
             <div class="mb-3">
               <label class="form-label">Confirmar nueva contraseña</label>
-              <input type="password" name="confirmar_clave" class="form-control" required minlength="4">
+              <input type="password" name="confirmar_clave" class="form-control" required minlength="{{ longitud_minima_clave }}">
             </div>
             <button type="submit" class="btn btn-primary w-100">Restablecer contraseña</button>
           </form>

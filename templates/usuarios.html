@@ -32,7 +32,7 @@
                 <td>
                   <form method="post" action="{{ url_for('cambiar_clave_usuario', usuario_id=u.id) }}" class="d-flex gap-1">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="password" name="nueva_clave" class="form-control form-control-sm" placeholder="Nueva contraseña" required minlength="4">
+                    <input type="password" name="nueva_clave" class="form-control form-control-sm" placeholder="Nueva contraseña" required minlength="{{ longitud_minima_clave }}">
                     <button type="submit" class="btn btn-outline-primary btn-sm">Cambiar</button>
                   </form>
                 </td>
@@ -69,7 +69,7 @@
           </div>
           <div class="mb-2">
             <label class="form-label">Contraseña</label>
-            <input type="password" name="clave" class="form-control" required minlength="4">
+            <input type="password" name="clave" class="form-control" required minlength="{{ longitud_minima_clave }}">
           </div>
           <div class="mb-2">
             <label class="form-label">Rol</label>
