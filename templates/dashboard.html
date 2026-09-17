@@ -11,7 +11,7 @@
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card text-bg-success h-100 shadow-sm">
       <div class="card-body">
         <h6 class="card-title mb-1">Ingresos</h6>
@@ -28,7 +28,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card text-bg-danger h-100 shadow-sm">
       <div class="card-body">
         <h6 class="card-title mb-1">Egresos</h6>
@@ -45,7 +45,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="card {% if balance_mes >= 0 %}text-bg-primary{% else %}text-bg-warning{% endif %} h-100 shadow-sm">
       <div class="card-body">
         <h6 class="card-title mb-1">Balance</h6>
@@ -62,47 +62,45 @@
       </div>
     </div>
   </div>
-</div>
-
-<div class="row g-3 mb-4">
   <div class="col-md-3">
     <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h6 class="card-title text-muted">Ocupación</h6>
-        <p class="fs-3 mb-0">{{ ocupadas }} / {{ total_habitaciones }}</p>
-        <small class="text-muted">habitaciones ocupadas</small>
+      <div class="card-body text-center">
+        <h6 class="card-title text-muted mb-2">Ocupación</h6>
+        <p class="display-6 mb-2">{{ porcentaje_ocupacion }}%</p>
+        <div class="progress mb-2" style="height: 10px;">
+          <div class="progress-bar bg-primary" role="progressbar"
+               style="width: {{ porcentaje_ocupacion }}%;"
+               aria-valuenow="{{ porcentaje_ocupacion }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <small class="text-muted">{{ ocupadas }} ocupadas · {{ disponibles }} disponibles</small>
       </div>
     </div>
   </div>
-  {# Tarjetas de totales históricos (ingresos/egresos/balance de todo el tiempo) ocultas
-     por defecto para mantener el panel enfocado en el mes actual; descoméntalas si las
-     prefieres a la vista, o consulta el histórico completo vía Metabase / /historico. #}
 </div>
 
-<div class="card shadow-sm mb-4">
-  <div class="card-body">
-    <h5 class="card-title">Estado de habitaciones</h5>
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead><tr><th>Habitación</th><th>Tarifa mensual</th><th>Inquilino actual</th><th>Estado</th></tr></thead>
-        <tbody>
-        {% for h in habitaciones %}
-          <tr>
-            <td>{{ h.nombre }}</td>
-            <td>${{ "{:,.0f}".format(h.tarifa_mensual) }}</td>
-            <td>{{ h.inquilino_activo.nombre if h.inquilino_activo else "—" }}</td>
-            <td>
-              {% if h.inquilino_activo %}
-                <span class="badge bg-success">Ocupada</span>
-              {% else %}
-                <span class="badge bg-secondary">Vacía</span>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+<h5 class="mb-3">Estado de habitaciones</h5>
+<div class="row g-3 mb-4">
+  {% for h in habitaciones %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <a href="{{ url_for('editar_habitacion', habitacion_id=h.id) }}" class="text-decoration-none text-reset">
+        <div class="card card-habitacion h-100 shadow-sm {% if h.inquilino_activo %}border-primary{% else %}border-success{% endif %}">
+          <div class="card-body text-center p-3">
+            <h6 class="card-title mb-1">{{ h.nombre }}</h6>
+            <p class="mb-1 text-muted small">${{ "{:,.0f}".format(h.tarifa_mensual) }}</p>
+            <p class="mb-2 small fw-semibold">{{ h.inquilino_activo.nombre if h.inquilino_activo else "\u00a0" }}</p>
+            {% if h.inquilino_activo %}
+              <span class="badge bg-primary">🔵 Ocupada</span>
+            {% else %}
+              <span class="badge bg-success">🟢 Vacía</span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
     </div>
-  </div>
+  {% else %}
+    <div class="col-12">
+      <p class="text-muted">No hay habitaciones creadas todavía.</p>
+    </div>
+  {% endfor %}
 </div>
 {% endblock %}

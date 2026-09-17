@@ -815,6 +815,9 @@ def dashboard():
 
     habitaciones = Habitacion.query.order_by(Habitacion.nombre).all()
     ocupadas = sum(1 for h in habitaciones if h.inquilino_activo)
+    total_habitaciones = len(habitaciones)
+    disponibles = total_habitaciones - ocupadas
+    porcentaje_ocupacion = round((ocupadas / total_habitaciones) * 100) if total_habitaciones else 0
 
     return render_template(
         "dashboard.html",
@@ -831,7 +834,9 @@ def dashboard():
         balance_hist=balance_hist,
         habitaciones=habitaciones,
         ocupadas=ocupadas,
-        total_habitaciones=len(habitaciones),
+        disponibles=disponibles,
+        porcentaje_ocupacion=porcentaje_ocupacion,
+        total_habitaciones=total_habitaciones,
     )
 
 
