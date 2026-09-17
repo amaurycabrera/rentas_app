@@ -3,33 +3,62 @@
 {% block contenido %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
   <h2 class="mb-0">Panel general</h2>
-  <a href="http://localhost:3000/dashboard/12?tab=5-ingresos" target="_blank" rel="noopener" class="btn btn-primary">
+{% if metabase_url_balance %}
+  <a href="{{ metabase_url_balance }}" target="_blank" rel="noopener" class="btn btn-primary">
     <i class="bi bi-bar-chart-line-fill"></i> Ver balance y gráficos completos
   </a>
+  {% endif %}
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-md-4">
     <div class="card text-bg-success h-100 shadow-sm">
       <div class="card-body">
-        <h6 class="card-title">Ingresos del mes</h6>
-        <p class="display-6 mb-0">${{ "{:,.0f}".format(total_ingresos_mes) }}</p>
+        <h6 class="card-title mb-1">Ingresos</h6>
+        <p class="small text-white opacity-75 mb-1">Acumulados en {{ nombre_mes_actual }}</p>
+        <p class="display-6 mb-1">${{ "{:,.0f}".format(total_ingresos_mes) }}</p>
+        <p class="small text-white opacity-75 mb-0">
+          {% if variacion_ingresos is not none %}
+            {% if variacion_ingresos > 0 %}▲{% elif variacion_ingresos < 0 %}▼{% else %}▬{% endif %}
+            {{ "%.0f"|format(variacion_ingresos|abs) }}% vs. {{ nombre_mes_anterior }}
+          {% else %}
+            Sin datos de {{ nombre_mes_anterior }}
+          {% endif %}
+        </p>
       </div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card text-bg-danger h-100 shadow-sm">
       <div class="card-body">
-        <h6 class="card-title">Egresos del mes</h6>
-        <p class="display-6 mb-0">${{ "{:,.0f}".format(total_egresos_mes) }}</p>
+        <h6 class="card-title mb-1">Egresos</h6>
+        <p class="small text-white opacity-75 mb-1">Acumulados en {{ nombre_mes_actual }}</p>
+        <p class="display-6 mb-1">${{ "{:,.0f}".format(total_egresos_mes) }}</p>
+        <p class="small text-white opacity-75 mb-0">
+          {% if variacion_egresos is not none %}
+            {% if variacion_egresos > 0 %}▲{% elif variacion_egresos < 0 %}▼{% else %}▬{% endif %}
+            {{ "%.0f"|format(variacion_egresos|abs) }}% vs. {{ nombre_mes_anterior }}
+          {% else %}
+            Sin datos de {{ nombre_mes_anterior }}
+          {% endif %}
+        </p>
       </div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card {% if balance_mes >= 0 %}text-bg-primary{% else %}text-bg-warning{% endif %} h-100 shadow-sm">
       <div class="card-body">
-        <h6 class="card-title">Balance del mes</h6>
-        <p class="display-6 mb-0">${{ "{:,.0f}".format(balance_mes) }}</p>
+        <h6 class="card-title mb-1">Balance</h6>
+        <p class="small text-white opacity-75 mb-1">Acumulado en {{ nombre_mes_actual }}</p>
+        <p class="display-6 mb-1">${{ "{:,.0f}".format(balance_mes) }}</p>
+        <p class="small text-white opacity-75 mb-0">
+          {% if variacion_balance is not none %}
+            {% if variacion_balance > 0 %}▲{% elif variacion_balance < 0 %}▼{% else %}▬{% endif %}
+            {{ "%.0f"|format(variacion_balance|abs) }}% vs. {{ nombre_mes_anterior }}
+          {% else %}
+            Sin datos de {{ nombre_mes_anterior }}
+          {% endif %}
+        </p>
       </div>
     </div>
   </div>
@@ -45,32 +74,9 @@
       </div>
     </div>
   </div>
-  {# OCULTAS A PEDIDO DEL USUARIO (13/09/2026) - no eliminar, solo comentadas:
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h6 class="card-title text-muted">Ingresos históricos</h6>
-        <p class="fs-4 mb-0">${{ "{:,.0f}".format(total_ingresos_hist) }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h6 class="card-title text-muted">Egresos históricos</h6>
-        <p class="fs-4 mb-0">${{ "{:,.0f}".format(total_egresos_hist) }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h6 class="card-title text-muted">Balance histórico</h6>
-        <p class="fs-4 mb-0">${{ "{:,.0f}".format(balance_hist) }}</p>
-      </div>
-    </div>
-  </div>
-  #}
+  {# Tarjetas de totales históricos (ingresos/egresos/balance de todo el tiempo) ocultas
+     por defecto para mantener el panel enfocado en el mes actual; descoméntalas si las
+     prefieres a la vista, o consulta el histórico completo vía Metabase / /historico. #}
 </div>
 
 <div class="card shadow-sm mb-4">

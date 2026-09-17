@@ -459,6 +459,25 @@ def ultimos_12_meses():
     return meses
 
 
+NOMBRES_MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+                  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def mes_anterior_a(anio, mes):
+    """Devuelve (año, mes) del mes calendario inmediatamente anterior."""
+    if mes == 1:
+        return anio - 1, 12
+    return anio, mes - 1
+
+
+def variacion_porcentual(actual, anterior):
+    """Porcentaje de cambio de 'anterior' a 'actual'. Devuelve None si no se
+    puede calcular (el mes anterior no tuvo movimientos), para no dividir por cero."""
+    if anterior == 0:
+        return None
+    return float((actual - anterior) / anterior * 100)
+
+
 @app.template_filter("tipo_label")
 def tipo_label_filter(valor, lista_tipos):
     """Convierte el valor interno de un tipo (ej. 'agua') en su etiqueta legible."""
@@ -759,6 +778,7 @@ def dashboard():
     hoy = date.today()
     mes_actual = hoy.month
     anio_actual = hoy.year
+    anio_anterior, mes_anterior = mes_anterior_a(anio_actual, mes_actual)
 
     ingresos_mes = Ingreso.query.filter(
         extract("month", Ingreso.fecha) == mes_actual,
@@ -768,10 +788,26 @@ def dashboard():
         extract("month", Egreso.fecha) == mes_actual,
         extract("year", Egreso.fecha) == anio_actual,
     )
+    ingresos_mes_anterior_q = Ingreso.query.filter(
+        extract("month", Ingreso.fecha) == mes_anterior,
+        extract("year", Ingreso.fecha) == anio_anterior,
+    )
+    egresos_mes_anterior_q = Egreso.query.filter(
+        extract("month", Egreso.fecha) == mes_anterior,
+        extract("year", Egreso.fecha) == anio_anterior,
+    )
 
     total_ingresos_mes = total(ingresos_mes, Ingreso.monto)
     total_egresos_mes = total(egresos_mes, Egreso.monto)
     balance_mes = total_ingresos_mes - total_egresos_mes
+
+    total_ingresos_mes_anterior = total(ingresos_mes_anterior_q, Ingreso.monto)
+    total_egresos_mes_anterior = total(egresos_mes_anterior_q, Egreso.monto)
+    balance_mes_anterior = total_ingresos_mes_anterior - total_egresos_mes_anterior
+
+    variacion_ingresos = variacion_porcentual(total_ingresos_mes, total_ingresos_mes_anterior)
+    variacion_egresos = variacion_porcentual(total_egresos_mes, total_egresos_mes_anterior)
+    variacion_balance = variacion_porcentual(balance_mes, balance_mes_anterior)
 
     total_ingresos_hist = total(Ingreso.query, Ingreso.monto)
     total_egresos_hist = total(Egreso.query, Egreso.monto)
@@ -785,6 +821,11 @@ def dashboard():
         total_ingresos_mes=total_ingresos_mes,
         total_egresos_mes=total_egresos_mes,
         balance_mes=balance_mes,
+        variacion_ingresos=variacion_ingresos,
+        variacion_egresos=variacion_egresos,
+        variacion_balance=variacion_balance,
+        nombre_mes_actual=NOMBRES_MESES[mes_actual - 1],
+        nombre_mes_anterior=NOMBRES_MESES[mes_anterior - 1],
         total_ingresos_hist=total_ingresos_hist,
         total_egresos_hist=total_egresos_hist,
         balance_hist=balance_hist,
